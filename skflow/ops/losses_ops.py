@@ -55,3 +55,27 @@ def softmax_classifier(tensor_in, labels, weights, biases, class_weight=None, na
         predictions = tf.nn.softmax(logits, name=name)
         return predictions, loss
 
+
+def multilabel_classifier(tensor_in, labels, weights, biases, class_weight=None, name=None):
+    """Returns prediction and loss for multilabel classifier.
+    Args:
+        tensor_in: Input tensor, [batch_size, feature_size], features.
+        labels: Tensor, [batch_size, n_classes], labels of the output classes.
+        weights: Tensor, [batch_size, feature_size], linear transformation matrix.
+        biases: Tensor, [batch_size], biases.
+        class_weight: Tensor, optional, [n_classes], weight for each class.
+                      If not given, all classes are supposed to have weight
+                      one.
+    Returns:
+        Prediction and loss tensors.
+    """
+    with tf.op_scope([tensor_in, labels], name, "multilabel_classifier"):
+        logits = tf.nn.xw_plus_b(tensor_in, weights, biases)
+        if class_weight:
+            logits = tf.mul(logits, class_weight)
+        sigmoid_xent = tf.nn.sigmoid_cross_entropy_with_logits(logits,
+                                                       labels,
+                                                       name="xent_raw")
+        loss = tf.reduce_mean(sigmoid_xent, name="xent")
+        predictions = tf.nn.sigmoid(logits, name=name)
+        return predictions, loss

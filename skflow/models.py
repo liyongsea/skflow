@@ -17,7 +17,7 @@ from __future__ import division, print_function, absolute_import
 
 import tensorflow as tf
 
-from skflow.ops import mean_squared_error_regressor, softmax_classifier, dnn
+from skflow.ops import mean_squared_error_regressor, softmax_classifier, dnn, multilabel_classifier
 
 
 def linear_regression(X, y):
@@ -250,3 +250,36 @@ def get_rnn_model(rnn_size, cell_type, num_layers, input_op_fn,
                                     initial_state=initial_state)
         return target_predictor_fn(encoding[-1], y)
     return rnn_estimator
+
+
+def multilabel_logistic_regression(X, y, class_weight=None):
+    """Creates logistic regression TensorFlow subgraph.
+    Args:
+        X: tensor or placeholder for input features,
+           shape should be [batch_size, n_features].
+        y: tensor or placeholder for target,
+           shape should be [batch_size, n_classes].
+        class_weight: tensor, [n_classes], where for each class
+                      it has weight of the class. If not provided
+                      will check if graph contains tensor `class_weight:0`.
+                      If that is not provided either all ones are used.
+    Returns:
+        Predictions and loss tensors.
+    """
+    with tf.variable_scope('logistic_regression'):
+        #tf.histogram_summary('logistic_regression.X', X)
+        #tf.histogram_summary('logistic_regression.y', y)
+        weights = tf.get_variable('weights', [X.get_shape()[1],
+                                              y.get_shape()[-1]])
+        bias = tf.get_variable('bias', [y.get_shape()[-1]])
+        #tf.histogram_summary('logistic_regression.weights', weights)
+        #tf.histogram_summary('logistic_regression.bias', bias)
+        # If no class weight provided, try to retrieve one from pre-defined
+        # tensor name in the graph.
+        if class_weight is None:
+            try:
+                class_weight = tf.get_default_graph().get_tensor_by_name('class_weight:0')
+            except KeyError:
+                pass
+        return multilabel_classifier(X, y, weights, bias,
+                                  class_weight=class_weight)
