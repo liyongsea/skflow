@@ -30,10 +30,10 @@ class ConfigAddon(object):
             each GPU uniformly on the same machine.
    """
 
-    def __init__(self, num_cores=4, verbose=1, gpu_memory_fraction=1):
+    def __init__(self, num_cores=4, verbose=1, gpu_memory_fraction=1, **config_params):
         gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=gpu_memory_fraction)
         self.config = tf.ConfigProto(log_device_placement=(verbose > 1),
                                      inter_op_parallelism_threads=num_cores,
                                      intra_op_parallelism_threads=num_cores,
-                                     gpu_options=gpu_options)
+                                     gpu_options=gpu_options, **config_params)
     
