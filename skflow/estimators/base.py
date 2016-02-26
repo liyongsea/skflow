@@ -89,7 +89,8 @@ class TensorFlowEstimator(BaseEstimator):
                  tf_random_seed=42, continue_training=False,
                  config_addon=None, verbose=1,
                  early_stopping_rounds=None,
-                 max_to_keep=5, keep_checkpoint_every_n_hours=10000):
+                 max_to_keep=5, keep_checkpoint_every_n_hours=10000,
+                 device="/cpu:0"):
         self.n_classes = n_classes
         self.tf_master = tf_master
         self.batch_size = batch_size
@@ -106,15 +107,17 @@ class TensorFlowEstimator(BaseEstimator):
         self.keep_checkpoint_every_n_hours = keep_checkpoint_every_n_hours
         self.class_weight = class_weight
         self.config_addon = config_addon
+        self.device = device
 
     def _setup_training(self):
         """Sets up graph, model and trainer."""
         self._graph = tf.Graph()
         self._graph.add_to_collection("IS_TRAINING", True)
-        with self._graph.as_default():
+        with self._graph.as_default(), tf.device(self.device):
             tf.set_random_seed(self.tf_random_seed)
-            self._global_step = tf.Variable(
-                0, name="global_step", trainable=False)
+            self._global_step = tf.get_variable('global_step', [],
+                                                initializer=tf.constant_initializer(0),
+                                                trainable=False)
 
             # Setting up input and output placeholders.
             input_shape = [None] + self._data_feeder.input_shape[1:]
@@ -161,7 +164,7 @@ class TensorFlowEstimator(BaseEstimator):
 
             # Create session to run model with.
             if self.config_addon is None:
-                self.config_addon = ConfigAddon(verbose=self.verbose)
+                self.config_addon = ConfigAddon(verbose=self.verbose, allow_soft_placement=True)
             self._session = tf.Session(self.tf_master, config=self.config_addon.config)
 
     def _setup_summary_writer(self, logdir):
