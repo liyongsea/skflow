@@ -48,22 +48,22 @@ def _generic_classifier(loss_function, non_linearity, tensor_in,
         Prediction and loss tensors.
     """
     with tf.op_scope([tensor_in, labels], name, scope_name):
-    logits = tf.nn.xw_plus_b(tensor_in, weights, biases)
-    if class_weight:
-        logits = tf.mul(logits, class_weight)
-    loss_raw = tf.nn.loss_function(logits, labels, name="loss_raw")
-    loss = tf.reduce_mean(loss_raw, name="loss")
-    predictions = tf.nn.non_linearity(logits, name=name)
-    return predictions, loss
+        logits = tf.nn.xw_plus_b(tensor_in, weights, biases)
+        if class_weight is not None:
+            logits = tf.mul(logits, class_weight)
+        loss_raw = loss_function(logits, labels, name="loss_raw")
+        loss = tf.reduce_mean(loss_raw, name="loss")
+        predictions = non_linearity(logits, name=name)
+        return predictions, loss
 
 
-def softmax_classifier(tensor_in, labels, weights, biases, class_weight=None, name=None,
-                       scope_name="softmax_classifier"):
+def softmax_classifier(tensor_in, labels, weights, biases, class_weight=None, name=None):
     return _generic_classifier(tf.nn.softmax_cross_entropy_with_logits, tf.nn.softmax,
-                       tensor_in, labels, weights, biases, class_weight=None, name=None)
+                               tensor_in, labels, weights, biases, class_weight=class_weight, 
+                               name=name, scope_name="softmax_classifier")
 
 
-def multilabel_classifier(tensor_in, labels, weights, biases, class_weight=None, name=None, 
-                          scope_name="multilabel_classifier"):
+def multilabel_classifier(tensor_in, labels, weights, biases, class_weight=None, name=None):
     return _generic_classifier(tf.nn.sigmoid_cross_entropy_with_logits, tf.nn.sigmoid,
-                       tensor_in, labels, weights, biases, class_weight=None, name=None)
+                               tensor_in, labels, weights, biases, class_weight=class_weight, 
+                               name=name, scope_name="multilabel_classifier")

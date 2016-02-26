@@ -32,7 +32,28 @@ class OpsTest(tf.test.TestCase):
             self.assertEqual(loss.get_shape(), [])
             value = session.run(loss, {features: [[0.2, 0.3, 0.2]], labels: [[0, 1]]})
             self.assertAllClose(value, 0.55180627)
- 
+
+    def test_multilabel_classifier(self):
+        with self.test_session() as session:
+            features = tf.placeholder(tf.float32, [None, 3])
+            labels = tf.placeholder(tf.float32, [None, 3])
+            weights = tf.constant([[0.1, 0.1, 0.1], [0.1, 0.1, 0.1], [0.1, 0.1, 0.1]])
+            biases = tf.constant([0.2, 0.3, 0.4])
+            class_weight = tf.constant([0.2, 0.5, 0.3])
+            prediction, loss = ops.multilabel_classifier(features, labels, weights, biases, class_weight)
+            self.assertEqual(prediction.get_shape()[1], 3)
+            self.assertEqual(loss.get_shape(), [])
+            value = session.run(loss, {features: [[0.2, 0.3, 0.2]], labels: [[0, 1, 1]]})
+
+            features = np.array([[0.2, 0.3, 0.2]])
+            logits = features.dot(0.1 * np.ones([3, 3])) + np.array([[0.2, 0.3, 0.4]])
+            logits = logits * np.array([[0.2, 0.5, 0.3]])
+            probas = 1 / (1 + np.exp(-logits))
+            labels = np.array([[0, 1, 1]])
+            loss = - np.mean((labels * np.log(probas) + (1 - labels) * np.log(1 - probas)))
+            
+            self.assertAllClose(value, loss)
+
     def test_embedding_lookup(self):
         d_embed = 5
         n_embed = 10
