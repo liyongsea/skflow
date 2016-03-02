@@ -16,11 +16,13 @@
 from __future__ import division, print_function, absolute_import
 
 import tensorflow as tf
+from skflow.ops.array_ops import xavier_init
 from skflow.ops.batch_norm_ops import batch_normalize
 
 
 def conv2d(tensor_in, n_filters, filter_shape, strides=None, padding='SAME',
-           bias=True, activation=None, batch_norm=False):
+           bias=True, bias_val=0.0, activation=None, batch_norm=False,
+           weight_filler=None):
     """Creates 2D convolutional subgraph with bank of filters.
 
     Uses tf.nn.conv2d under the hood.
@@ -49,11 +51,24 @@ def conv2d(tensor_in, n_filters, filter_shape, strides=None, padding='SAME',
             strides = [1, 1, 1, 1]
         input_shape = tensor_in.get_shape()
         filter_shape = list(filter_shape) + [input_shape[3], n_filters]
-        filters = tf.get_variable('filters', filter_shape, tf.float32)
+        if weight_filler is None:
+            filters = tf.get_variable('filters', filter_shape, tf.float32)
+        else:
+            assert(len(input_shape) == 4)
+            print(input_shape)
+            num, a, b, c = input_shape
+            num = int(num)
+            a = int(a)
+            b = int(b)
+            c = int(c)
+            filters = tf.get_variable('filters',
+                                      filter_shape, tf.float32,
+                                      initializer=xavier_init(a * b * c, num * a * b))
         output = tf.nn.conv2d(tensor_in, filters, strides, padding)
         if bias:
             bias_var = tf.get_variable('bias', [1, 1, 1, n_filters],
-                                       tf.float32)
+                                       tf.float32,
+                                       initializer=tf.constant_initializer(bias_val))
             output = output + bias_var
         if batch_norm:
             output = batch_normalize(output)

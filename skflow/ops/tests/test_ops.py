@@ -78,6 +78,25 @@ class OpsTest(tf.test.TestCase):
         self.assertEqual(conv.shape, (batch_size, input_shape[0],
                                       input_shape[1], n_filters))
 
+    def test_conv2d_with_xavier(self):
+        tf.set_random_seed(42)
+        batch_size = 32
+        input_shape = (10, 10)
+        n_filters = 7
+        filter_shape = (5, 5)
+        vals = np.random.randn(batch_size, input_shape[0], input_shape[1], 1)
+        with self.test_session() as sess:
+            tf.add_to_collection("IS_TRAINING", True)
+            tensor_in = tf.placeholder(tf.float32, [batch_size, input_shape[0],
+                                                    input_shape[1], 1])
+            res = ops.conv2d(
+                tensor_in, n_filters, filter_shape,
+                bias_val=0.01, weight_filler=True)
+            sess.run(tf.initialize_all_variables())
+            conv = sess.run(res, feed_dict={tensor_in.name: vals})
+        self.assertEqual(conv.shape, (batch_size, input_shape[0],
+                                      input_shape[1], n_filters))
+
     def test_one_hot_matrix(self):
         with self.test_session() as sess:
             tensor_in = tf.placeholder(tf.int64, [10, 2])
