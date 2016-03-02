@@ -42,6 +42,7 @@ def conv2d(tensor_in, n_filters, filter_shape, strides=None, padding='SAME',
         bias: Boolean, if to add bias.
         activation: Activation Op, optional. If provided applied on the output.
         batch_norm: Whether to apply batch normalization.
+        weight_filler: Boolean, if init with xavier
 
     Returns:
         A Tensor with resulting convolution.
@@ -55,15 +56,12 @@ def conv2d(tensor_in, n_filters, filter_shape, strides=None, padding='SAME',
             filters = tf.get_variable('filters', filter_shape, tf.float32)
         else:
             assert(len(input_shape) == 4)
-            print(input_shape)
-            num, a, b, c = input_shape
-            num = int(num)
-            a = int(a)
-            b = int(b)
-            c = int(c)
+            n_channels = int(input_shape[-1])
+            fan_in = n_channels * int(filter_shape[0]) * int(filter_shape[1])
+            fan_out = int(n_filters) * int(filter_shape[0]) * int(filter_shape[1])
             filters = tf.get_variable('filters',
                                       filter_shape, tf.float32,
-                                      initializer=xavier_init(a * b * c, num * a * b))
+                                      initializer=xavier_init(fan_in, fan_out))
         output = tf.nn.conv2d(tensor_in, filters, strides, padding)
         if bias:
             bias_var = tf.get_variable('bias', [1, 1, 1, n_filters],
