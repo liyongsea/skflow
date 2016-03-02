@@ -109,7 +109,7 @@ class TensorFlowEstimator(BaseEstimator):
         self.config_addon = config_addon
         self.device = device
 
-    def _setup_training(self):
+    def _setup_training(self, batch_size=None):
         """Sets up graph, model and trainer."""
         self._graph = tf.Graph()
         self._graph.add_to_collection("IS_TRAINING", True)
@@ -120,8 +120,8 @@ class TensorFlowEstimator(BaseEstimator):
                                                 trainable=False)
 
             # Setting up input and output placeholders.
-            input_shape = [None] + self._data_feeder.input_shape[1:]
-            output_shape = [None] + self._data_feeder.output_shape[1:]
+            input_shape = [batch_size] + self._data_feeder.input_shape[1:]
+            output_shape = [batch_size] + self._data_feeder.output_shape[1:]
             self._inp = tf.placeholder(
                 tf.as_dtype(self._data_feeder.input_dtype), input_shape,
                 name="input")
