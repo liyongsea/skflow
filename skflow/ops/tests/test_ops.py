@@ -44,15 +44,7 @@ class OpsTest(tf.test.TestCase):
             self.assertEqual(prediction.get_shape()[1], 3)
             self.assertEqual(loss.get_shape(), [])
             value = session.run(loss, {features: [[0.2, 0.3, 0.2]], labels: [[0, 1, 1]]})
-
-            features = np.array([[0.2, 0.3, 0.2]])
-            logits = features.dot(0.1 * np.ones([3, 3])) + np.array([[0.2, 0.3, 0.4]])
-            logits = logits * np.array([[0.2, 0.5, 0.3]])
-            probas = 1 / (1 + np.exp(-logits))
-            labels = np.array([[0, 1, 1]])
-            loss = - np.mean((labels * np.log(probas) + (1 - labels) * np.log(1 - probas)))
-            
-            self.assertAllClose(value, loss)
+            self.assertAllClose(value, 0.65018703487)
 
     def test_embedding_lookup(self):
         d_embed = 5
