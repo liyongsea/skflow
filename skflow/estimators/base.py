@@ -173,7 +173,7 @@ class TensorFlowEstimator(BaseEstimator):
             os.path.join(logdir, datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')),
             graph_def=self._session.graph_def)
 
-    def fit(self, X, y, logdir=None):
+    def fit(self, X, y, logdir=None, print_steps=0):
         """Builds a neural network model given provided `model_fn` and training
         data X and y.
 
@@ -229,7 +229,8 @@ class TensorFlowEstimator(BaseEstimator):
                             self._summaries,
                             verbose=self.verbose,
                             early_stopping_rounds=self._early_stopping_rounds,
-                            feed_params_fn=self._data_feeder.get_feed_params)
+                            feed_params_fn=self._data_feeder.get_feed_params,
+                            print_steps=print_steps)
         return self
 
     def partial_fit(self, X, y):
