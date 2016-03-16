@@ -334,6 +334,22 @@ class TensorFlowEstimator(BaseEstimator):
         """
         return self._session.run(self.get_tensor(name))
 
+    def get_layer_value(self, X, name, batch_size=-1):
+        if not self._initialized:
+            raise NotFittedError()
+        self._graph.add_to_collection("IS_TRAINING", False)
+        predict_data_feeder = setup_predict_data_feeder(
+            X, batch_size=batch_size)
+        preds = []
+        dropouts = self._graph.get_collection(DROPOUTS)
+        feed_dict = {prob: 1.0 for prob in dropouts}
+        tensor = self.get_tensor(name)
+        for data in predict_data_feeder:
+            feed_dict[self._inp] = data
+            preds.append(self._session.run(
+                tensor,
+                feed_dict))
+        return preds
     def save(self, path):
         """Saves checkpoints and graph to given path.
 
