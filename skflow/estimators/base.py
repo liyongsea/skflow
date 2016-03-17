@@ -390,7 +390,7 @@ class TensorFlowEstimator(BaseEstimator):
         self._saver.save(self._session, os.path.join(path, 'model'),
                          global_step=self._global_step)
 
-    def _restore(self, path):
+    def _restore(self, path, gpu_number=None):
         """Restores this estimator from given path.
 
         Note: will rebuild the graph and initialize all parameters,
@@ -415,6 +415,8 @@ class TensorFlowEstimator(BaseEstimator):
             with open(graph_filename) as fgraph:
                 graph_def = tf.GraphDef()
                 text_format.Merge(fgraph.read(), graph_def)
+                if not gpu_number is None: 
+                    change_device_gpu(graph_def, gpu_number)
                 (self._inp, self._out,
                  self._model_predictions, self._model_loss) = tf.import_graph_def(
                      graph_def, name='', return_elements=endpoints)
@@ -454,7 +456,7 @@ class TensorFlowEstimator(BaseEstimator):
 
     # pylint: disable=unused-argument
     @classmethod
-    def restore(cls, path, config_addon=None):
+    def restore(cls, path, config_addon=None, gpu_number=None):
         """Restores model from give path.
 
         Args:
@@ -485,7 +487,7 @@ class TensorFlowEstimator(BaseEstimator):
         class_name = model_def.pop('class_name')
         if class_name == 'TensorFlowEstimator':
             custom_estimator = TensorFlowEstimator(model_fn=None, **model_def)
-            custom_estimator._restore(path)
+            custom_estimator._restore(path, gpu_number)
             return custom_estimator
 
         # To avoid cyclical dependencies, import inside the function instead of
@@ -496,3 +498,11 @@ class TensorFlowEstimator(BaseEstimator):
         estimator._restore(path)
         return estimator
 
+def change_device_gpu(graph_def, gpu_number):
+    for node in graph_def.node:
+        device = node.device    
+        device_split = device.split(":")
+        if device_split[1] == "GPU":
+            device_split[2] = str(gpu_number)
+            device = ':'.join(device_split)
+            node.device  = device
