@@ -415,7 +415,7 @@ class TensorFlowEstimator(BaseEstimator):
             with open(graph_filename) as fgraph:
                 graph_def = tf.GraphDef()
                 text_format.Merge(fgraph.read(), graph_def)
-                if not gpu_number is None: 
+                if gpu_number is not None:
                     change_device_gpu(graph_def, gpu_number)
                 (self._inp, self._out,
                  self._model_predictions, self._model_loss) = tf.import_graph_def(
