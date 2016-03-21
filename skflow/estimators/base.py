@@ -390,7 +390,7 @@ class TensorFlowEstimator(BaseEstimator):
         self._saver.save(self._session, os.path.join(path, 'model'),
                          global_step=self._global_step)
 
-    def _restore(self, path, gpu_number=None, use_GPU=True):
+    def _restore(self, path, gpu_number=None, use_gpu=True):
         """Restores this estimator from given path.
 
         Note: will rebuild the graph and initialize all parameters,
@@ -415,7 +415,7 @@ class TensorFlowEstimator(BaseEstimator):
             with open(graph_filename) as fgraph:
                 graph_def = tf.GraphDef()
                 text_format.Merge(fgraph.read(), graph_def)
-                change_device(graph_def, gpu_number, use_GPU)
+                change_device(graph_def, gpu_number, use_gpu)
                 (self._inp, self._out,
                  self._model_predictions, self._model_loss) = tf.import_graph_def(
                      graph_def, name='', return_elements=endpoints)
@@ -455,7 +455,7 @@ class TensorFlowEstimator(BaseEstimator):
 
     # pylint: disable=unused-argument
     @classmethod
-    def restore(cls, path, config_addon=None, gpu_number=None, use_GPU=True):
+    def restore(cls, path, config_addon=None, gpu_number=None, use_gpu=True):
         """Restores model from give path.
 
         Args:
@@ -497,15 +497,15 @@ class TensorFlowEstimator(BaseEstimator):
         estimator._restore(path)
         return estimator
 
-def change_device(graph_def, gpu_number=None, use_GPU=True):
+def change_device(graph_def, gpu_number=None, use_gpu=True):
     for node in graph_def.node:
         device = node.device
         device_split = device.split(":")
         if device_split[1] == "GPU":
-            if gpu_number is not None and use_GPU:
+            if gpu_number is not None and use_gpu:
                 device_split[2] = str(gpu_number)
                 device = ':'.join(device_split)
-            if not use_GPU:
+            if not use_gpu:
                 device_split[1] = "CPU" 
                 device = ':'.join(device_split)
             node.device = device
