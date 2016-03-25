@@ -118,7 +118,7 @@ class TensorFlowEstimator(BaseEstimator):
             self._global_step = tf.get_variable('global_step', [],
                                                 initializer=tf.constant_initializer(0),
                                                 trainable=False)
-
+            
             # Setting up input and output placeholders.
             input_shape = [None] + self._data_feeder.input_shape[1:]
             output_shape = [None] + self._data_feeder.output_shape[1:]
@@ -509,3 +509,64 @@ def change_device(graph_def, gpu_number=None, use_gpu=True):
                 device_split[1] = "CPU" 
                 device = ':'.join(device_split)
             node.device = device
+
+
+class ChangingLoss(TensorFlowEstimator):
+
+    def _setup_training(self):
+        """Sets up graph, model and trainer."""
+        self._graph = tf.Graph()
+        self._graph.add_to_collection("IS_TRAINING", True)
+        with self._graph.as_default(), tf.device(self.device):
+            tf.set_random_seed(self.tf_random_seed)
+            self._global_step = tf.get_variable('global_step', [],
+                                                initializer=tf.constant_initializer(0),
+                                                trainable=False)
+            
+            # Setting up input and output placeholders.
+            input_shape = [None] + self._data_feeder.input_shape[1:]
+            output_shape = [None] + self._data_feeder.output_shape[1:]
+            self._inp = tf.placeholder(
+                tf.as_dtype(self._data_feeder.input_dtype), input_shape,
+                name="input")
+            self._out = tf.placeholder(
+                tf.as_dtype(self._data_feeder.output_dtype), output_shape,
+                name="output")
+
+            # If class weights are provided, add them to the graph.
+            # Different loss functions can use this tensor by name.
+            if self.class_weight:
+                self._class_weight_node = tf.constant(
+                    self.class_weight, name='class_weight')
+
+            # Add histograms for X and y if they are floats.
+            if self._data_feeder.input_dtype in (np.float32, np.float64):
+                tf.histogram_summary("X", self._inp)
+            if self._data_feeder.output_dtype in (np.float32, np.float64):
+                tf.histogram_summary("y", self._out)
+
+            # Create model's graph.
+            self._model_predictions, self._model_loss = self.model_fn(
+                self._inp, self._out, self._global_step)
+
+            # Create summary to monitor loss
+            tf.scalar_summary("loss", self._model_loss)
+
+            # Set up a single operator to merge all the summaries
+            self._summaries = tf.merge_all_summaries()
+
+            # Create trainer and augment graph with gradients and optimizer.
+            # Additionally creates initialization ops.
+            self._trainer = TensorFlowTrainer(
+                loss=self._model_loss, global_step=self._global_step,
+                optimizer=self.optimizer, learning_rate=self.learning_rate)
+
+            # Create model's saver capturing all the nodes created up until now.
+            self._saver = tf.train.Saver(
+                max_to_keep=self.max_to_keep,
+                keep_checkpoint_every_n_hours=self.keep_checkpoint_every_n_hours)
+
+            # Create session to run model with.
+            if self.config_addon is None:
+                self.config_addon = ConfigAddon(verbose=self.verbose, allow_soft_placement=True)
+            self._session = tf.Session(self.tf_master, config=self.config_addon.config)
