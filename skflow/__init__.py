@@ -23,4 +23,3 @@ from skflow import preprocessing
 from skflow.io import data_feeder
 from skflow import models
 from skflow.trainer import TensorFlowTrainer
-from skflow.trainer import ChangingLoss
