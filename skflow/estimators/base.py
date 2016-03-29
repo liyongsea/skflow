@@ -415,7 +415,7 @@ class TensorFlowEstimator(BaseEstimator):
             with open(graph_filename) as fgraph:
                 graph_def = tf.GraphDef()
                 text_format.Merge(fgraph.read(), graph_def)
-                change_device(graph_def, gpu_number, use_gpu)
+                freeze_device(graph_def, gpu_number, use_gpu)
                 (self._inp, self._out,
                  self._model_predictions, self._model_loss) = tf.import_graph_def(
                      graph_def, name='', return_elements=endpoints)
@@ -509,3 +509,6 @@ def change_device(graph_def, gpu_number=None, use_gpu=True):
                 device_split[1] = "CPU" 
                 device = ':'.join(device_split)
             node.device = device
+def freeze_device(graph_def, gpu_number=None, use_gpu=True):
+    for node in graph_def.node:
+        node.device = ""
