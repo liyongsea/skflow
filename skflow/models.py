@@ -31,8 +31,6 @@ def linear_regression(X, y):
         Predictions and loss tensors.
     """
     with tf.variable_scope('linear_regression'):
-        tf.histogram_summary('linear_regression.X', X)
-        tf.histogram_summary('linear_regression.y', y)
         y_shape = y.get_shape()
         if len(y_shape) == 1:
             output_shape = 1
@@ -40,8 +38,6 @@ def linear_regression(X, y):
             output_shape = y_shape[1]
         weights = tf.get_variable('weights', [X.get_shape()[1], output_shape])
         bias = tf.get_variable('bias', [output_shape])
-        tf.histogram_summary('linear_regression.weights', weights)
-        tf.histogram_summary('linear_regression.bias', bias)
         return mean_squared_error_regressor(X, y, weights, bias)
 
 
@@ -62,13 +58,9 @@ def logistic_regression(X, y, class_weight=None):
         Predictions and loss tensors.
     """
     with tf.variable_scope('logistic_regression'):
-        tf.histogram_summary('logistic_regression.X', X)
-        tf.histogram_summary('logistic_regression.y', y)
         weights = tf.get_variable('weights', [X.get_shape()[1],
                                               y.get_shape()[-1]])
         bias = tf.get_variable('bias', [y.get_shape()[-1]])
-        tf.histogram_summary('logistic_regression.weights', weights)
-        tf.histogram_summary('logistic_regression.bias', bias)
         # If no class weight provided, try to retrieve one from pre-defined
         # tensor name in the graph.
         if not class_weight:
