@@ -15,9 +15,10 @@
 
 from __future__ import division, print_function, absolute_import
 
+import datetime
 import json
 import os
-import datetime
+import shutil
 from six import string_types
 
 import numpy as np
@@ -35,8 +36,16 @@ from skflow.trainer import TensorFlowTrainer, RestoredTrainer
 from skflow.io.data_feeder import setup_train_data_feeder
 from skflow.io.data_feeder import setup_predict_data_feeder
 from skflow.ops.dropout_ops import DROPOUTS
+from skflow import monitors
 
 from skflow.addons.config_addon import ConfigAddon
+
+
+def _write_with_backup(filename, content):
+    if os.path.exists(filename):
+        shutil.move(filename, filename + '.old')
+    with open(filename, 'w') as f:
+        f.write(content)
 
 
 class TensorFlowEstimator(BaseEstimator):
@@ -72,9 +81,6 @@ class TensorFlowEstimator(BaseEstimator):
                  0: the algorithm and debug information is muted.
                  1: trainer prints the progress.
                  2: log device placement is printed.
-        early_stopping_rounds: Activates early stopping if this is not None.
-            Loss needs to decrease at least every every <early_stopping_rounds>
-            round(s) to continue training. (default: None)
         max_to_keep: The maximum number of recent checkpoint files to keep.
             As new files are created, older files are deleted.
             If None or 0, all checkpoint files are kept.
@@ -102,7 +108,6 @@ class TensorFlowEstimator(BaseEstimator):
         self.model_fn = model_fn
         self.continue_training = continue_training
         self._initialized = False
-        self._early_stopping_rounds = early_stopping_rounds
         self.max_to_keep = max_to_keep
         self.keep_checkpoint_every_n_hours = keep_checkpoint_every_n_hours
         self.class_weight = class_weight
@@ -162,6 +167,9 @@ class TensorFlowEstimator(BaseEstimator):
                 max_to_keep=self.max_to_keep,
                 keep_checkpoint_every_n_hours=self.keep_checkpoint_every_n_hours)
 
+            # Enable monitor to create validation data dict with appropriate tf placeholders
+            self._monitor.create_val_feed_dict(self._inp, self._out)
+
             # Create session to run model with.
             if self.config_addon is None:
                 self.config_addon = ConfigAddon(verbose=self.verbose, allow_soft_placement=True)
@@ -173,7 +181,7 @@ class TensorFlowEstimator(BaseEstimator):
             os.path.join(logdir, datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')),
             graph_def=self._session.graph_def)
 
-    def fit(self, X, y, logdir=None, print_steps=0):
+    def fit(self, X, y, monitor=None, logdir=None):
         """Builds a neural network model given provided `model_fn` and training
         data X and y.
 
@@ -190,6 +198,7 @@ class TensorFlowEstimator(BaseEstimator):
             y: vector or matrix [n_samples] or [n_samples, n_outputs]. Can be
             iterator that returns array of targets. The training target values
             (class labels in classification, real numbers in regression).
+            monitor: Monitor object to print training progress and invoke early stopping
             logdir: the directory to save the log file that can be used for
             optional visualization.
 
@@ -200,6 +209,12 @@ class TensorFlowEstimator(BaseEstimator):
         self._data_feeder = setup_train_data_feeder(X, y,
                                                     self.n_classes,
                                                     self.batch_size)
+
+        if monitor is None:
+            self._monitor = monitors.default_monitor()
+        else:
+            self._monitor = monitor
+
         if not self.continue_training or not self._initialized:
             # Sets up model and trainer.
             self._setup_training()
@@ -225,12 +240,10 @@ class TensorFlowEstimator(BaseEstimator):
                             self._data_feeder.get_feed_dict_fn(
                                 self._inp, self._out),
                             self.steps,
+                            self._monitor,
                             self._summary_writer,
                             self._summaries,
-                            verbose=self.verbose,
-                            early_stopping_rounds=self._early_stopping_rounds,
-                            feed_params_fn=self._data_feeder.get_feed_params,
-                            print_steps=print_steps)
+                            feed_params_fn=self._data_feeder.get_feed_params)
         return self
 
     def partial_fit(self, X, y):
@@ -257,7 +270,7 @@ class TensorFlowEstimator(BaseEstimator):
         """
         return self.fit(X, y)
 
-    def _predict(self, X, batch_size=-1):
+    def _predict(self, X, axis=-1, batch_size=-1):
         if not self._initialized:
             raise NotFittedError()
         self._graph.add_to_collection("IS_TRAINING", False)
@@ -268,9 +281,14 @@ class TensorFlowEstimator(BaseEstimator):
         feed_dict = {prob: 1.0 for prob in dropouts}
         for data in predict_data_feeder:
             feed_dict[self._inp] = data
-            preds.append(self._session.run(
+            predictions_for_batch = self._session.run(
                 self._model_predictions,
-                feed_dict))
+                feed_dict)
+            if self.n_classes > 1 and axis != -1:
+                preds.append(predictions_for_batch.argmax(axis=axis))
+            else:
+                preds.append(predictions_for_batch)
+
         return np.concatenate(preds, axis=0)
 
     def predict(self, X, axis=1, batch_size=-1):
@@ -292,10 +310,7 @@ class TensorFlowEstimator(BaseEstimator):
             y: array of shape [n_samples]. The predicted classes or predicted
             value.
         """
-        pred = self._predict(X, batch_size=batch_size)
-        if self.n_classes < 2:
-            return pred
-        return pred.argmax(axis=axis)
+        return self._predict(X, axis=axis, batch_size=batch_size)
 
     def predict_proba(self, X, batch_size=-1):
         """Predict class probability of the input samples X.
@@ -309,7 +324,7 @@ class TensorFlowEstimator(BaseEstimator):
             y: array of shape [n_samples, n_classes]. The predicted
             probabilities for each class.
 
-       """
+        """
         return self._predict(X, batch_size=batch_size)
 
     def get_tensor(self, name):
@@ -367,26 +382,33 @@ class TensorFlowEstimator(BaseEstimator):
         if not os.path.isdir(path):
             raise ValueError("Path %s should be a directory to save"
                              "checkpoints and graph." % path)
-        with open(os.path.join(path, 'model.def'), 'w') as fmodel:
-            all_params = self.get_params()
-            params = {}
-            for key, value in all_params.items():
-                if not callable(value) and value is not None:
-                    params[key] = value
-            params['class_name'] = type(self).__name__
-            fmodel.write(json.dumps(
-                params,
-                default=lambda o: o.__dict__ if hasattr(o, '__dict__') else None))
-        with open(os.path.join(path, 'endpoints'), 'w') as foutputs:
-            foutputs.write('%s\n%s\n%s\n%s' % (
-                self._inp.name,
-                self._out.name,
-                self._model_predictions.name,
-                self._model_loss.name))
-        with open(os.path.join(path, 'graph.pbtxt'), 'w') as fgraph:
-            fgraph.write(str(self._graph.as_graph_def()))
-        with open(os.path.join(path, 'saver.pbtxt'), 'w') as fsaver:
-            fsaver.write(str(self._saver.as_saver_def()))
+        # Save model definition.
+        all_params = self.get_params()
+        params = {}
+        for key, value in all_params.items():
+            if not callable(value) and value is not None:
+                params[key] = value
+        params['class_name'] = type(self).__name__
+        model_def = json.dumps(
+            params,
+            default=lambda o: o.__dict__ if hasattr(o, '__dict__') else None)
+        _write_with_backup(os.path.join(path, 'model.def'), model_def)
+
+        # Save checkpoints.
+        endpoints = '%s\n%s\n%s\n%s' % (
+            self._inp.name,
+            self._out.name,
+            self._model_predictions.name,
+            self._model_loss.name)
+        _write_with_backup(os.path.join(path, 'endpoints'), endpoints)
+
+        # Save graph definition.
+        _write_with_backup(os.path.join(path, 'graph.pbtxt'), str(self._graph.as_graph_def()))
+
+        # Save saver defintion.
+        _write_with_backup(os.path.join(path, 'saver.pbtxt'), str(self._saver.as_saver_def()))
+
+        # Save checkpoints.
         self._saver.save(self._session, os.path.join(path, 'model'),
                          global_step=self._global_step)
 
@@ -423,7 +445,7 @@ class TensorFlowEstimator(BaseEstimator):
             if not os.path.exists(saver_filename):
                 raise ValueError("Restore folder doesn't contain saver defintion.")
             with open(saver_filename) as fsaver:
-                saver_def = tf.python.training.saver.saver_pb2.SaverDef()
+                saver_def = tf.train.SaverDef()
                 text_format.Merge(fsaver.read(), saver_def)
                 self._saver = tf.train.Saver(saver_def=saver_def)
 
@@ -506,6 +528,6 @@ def change_device(graph_def, gpu_number=None, use_gpu=True):
                 device_split[2] = str(gpu_number)
                 device = ':'.join(device_split)
             if not use_gpu:
-                device_split[1] = "CPU" 
+                device_split[1] = "CPU"
                 device = ':'.join(device_split)
             node.device = device

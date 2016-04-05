@@ -1,3 +1,11 @@
+SkFlow has been moved to Tensorflow.
+====================================
+
+SkFlow moved into http://github.com/tensorflow/tensorflow into contrib folder.
+The development will continue there. This repository will ramp down, including after next Tensorflow release we will wind down code here and just leave `from tensorflow.contrib import skflow`.
+
+Previously:
+
 |Travis-CI Build Status| |Codecov Status| |License| |PyPI version| |Join the chat at
 https://gitter.im/tensorflow/skflow|
 
@@ -19,15 +27,17 @@ Why *Scikit Flow*?
 - To provide a set of reference models that would be easy to integrate with existing code.
 
 Installation
-------------
+============
 
 Dependencies
-~~~~~~~~~~~~
+-----------
 - Python: 2.7, 3.4+ 
 - Scikit learn: 0.16, 0.17, 0.18+ 
-- Tensorflow: 0.6+
+- Tensorflow: 0.7+
 
-First, make sure you have TensorFlow and Scikit Learn installed, then run the following to install the stable version from PyPI:
+First, you need to make sure you have `TensorFlow <https://github.com/tensorflow/tensorflow#installation>`__ and `Scikit Learn <http://scikit-learn.org/stable/install.html>`__ installed. 
+
+Run the following to install the stable version from PyPI:
 
 .. code:: bash
 
@@ -42,13 +52,22 @@ Or run the following to install from the development version from Github:
 Tutorial
 --------
 
--  `Introduction to Scikit Flow and why you want to start learning
+
+-  `Introduction to Scikit Flow and Why You Want to Start Learning
    TensorFlow <https://medium.com/@ilblackdragon/tensorflow-tutorial-part-1-c559c63c0cb1>`__
--  `DNNs, custom model and Digit recognition
+-  `DNNs, Custom model and Digit Recognition
    examples <https://medium.com/@ilblackdragon/tensorflow-tutorial-part-2-9ffe47049c92>`__
--  `Categorical variables: One hot vs Distributed
+-  `Categorical Variables: One Hot vs Distributed
    representation <https://medium.com/@ilblackdragon/tensorflow-tutorial-part-3-c5fc0662bc08>`__
+-  `Scikit Flow Key Features Illustrated <http://terrytangyuan.github.io/2016/03/14/scikit-flow-intro/>`__
 -  More coming soon.
+
+Community
+---------
+- Twitter `#skflow <https://twitter.com/search?q=skflow&src=typd>`__.
+- StackOverflow with `skflow tag <http://stackoverflow.com/questions/tagged/skflow>`__ for questions and struggles.
+- Github `issues <https://github.com/tensorflow/skflow/issues>`__ for technical discussions and feature requests. 
+- `Gitter channel <https://gitter.im/tensorflow/skflow>`__ for non-trivial discussions.
 
 Usage
 -----
@@ -133,27 +152,6 @@ Example of how to pass a custom model to the TensorFlowEstimator:
     score = metrics.accuracy_score(iris.target, classifier.predict(iris.data))
     print("Accuracy: %f" % score)
 
-Custom model with multiple GPUs
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-To use multiple GPUs to build a custom model, everything else is the same as the example above except that in the definition of custom model you'll need to specify the device:
-
-.. code:: python
-
-    import tensorflow as tf
-
-    def my_model(X, y):
-        """
-        This is DNN with 10, 20, 10 hidden layers, and dropout of 0.5 probability.
-
-        Note: If you want to run this example with multiple GPUs, Cuda Toolkit 7.0 and
-        CUDNN 6.5 V2 from NVIDIA need to be installed beforehand. 
-        """
-        with tf.device('/gpu:1'):
-            layers = skflow.ops.dnn(X, [10, 20, 10], keep_prob=0.5)
-        with tf.device('/gpu:2'):
-            return skflow.models.logistic_regression(layers, y)
-
 Saving / Restoring models
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -213,7 +211,7 @@ See examples folder for:
    :target: http://www.apache.org/licenses/LICENSE-2.0.html
 .. |Join the chat at https://gitter.im/tensorflow/skflow| image:: https://badges.gitter.im/Join%20Chat.svg
    :target: https://gitter.im/tensorflow/skflow?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge
-.. |Text classification RNN Graph| image:: https://raw.githubusercontent.com/tensorflow/skflow/master/docs/images/text_classification_rnn_graph.png
-.. |Text classification RNN Loss| image:: https://raw.githubusercontent.com/tensorflow/skflow/master/docs/images/text_classification_rnn_loss.png
+.. |Text classification RNN Graph| image:: https://raw.githubusercontent.com/tensorflow/skflow/master/g3doc/images/text_classification_rnn_graph.png
+.. |Text classification RNN Loss| image:: https://raw.githubusercontent.com/tensorflow/skflow/master/g3doc/images/text_classification_rnn_loss.png
 .. |PyPI version| image:: https://badge.fury.io/py/skflow.svg
    :target: http://badge.fury.io/py/skflow
