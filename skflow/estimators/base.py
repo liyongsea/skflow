@@ -507,5 +507,6 @@ def change_device(graph_def, gpu_number=None, use_gpu=True):
                 device = ':'.join(device_split)
             if not use_gpu:
                 device_split[1] = "CPU" 
+                device_split[2] = "0" # only CPU:0 exists
                 device = ':'.join(device_split)
             node.device = device
