@@ -455,17 +455,25 @@ class TensorFlowEstimator(BaseEstimator):
 
     # pylint: disable=unused-argument
     @classmethod
-    def restore(cls, path, config_addon=None, gpu_number=None, use_gpu=True):
+    def restore(cls, path, config_addon=None, device="/cpu:0"):
         """Restores model from give path.
 
         Args:
-            path: Path to the checkpoints and other model information.
-            config_addon: ConfigAddon object that controls the configurations of the session,
+            path (string): Path to the checkpoints and other model information.
+            config_addon: skflow.addons.ConfigAddon object that controls the configurations of the session,
                 e.g. num_cores, gpu_memory_fraction, etc. This is allowed to be reconfigured.
+            device (string): device to restore on, e.g. "/gpu:2" 
 
         Returns:
-            Estiamator, object of the subclass of TensorFlowEstimator.
+            Estimator, object of the subclass of TensorFlowEstimator.
         """
+        if device.startswith("/gpu"):
+            use_gpu = True
+            gpu_number = int(device[-1])
+        else:
+            use_gpu = False
+            gpu_number = None
+
         model_def_filename = os.path.join(path, 'model.def')
         if not os.path.exists(model_def_filename):
             raise ValueError("Restore folder doesn't contain model definition.")
@@ -486,7 +494,7 @@ class TensorFlowEstimator(BaseEstimator):
         class_name = model_def.pop('class_name')
         if class_name == 'TensorFlowEstimator':
             custom_estimator = TensorFlowEstimator(model_fn=None, **model_def)
-            custom_estimator._restore(path, gpu_number)
+            custom_estimator._restore(path, gpu_number, use_gpu)
             return custom_estimator
 
         # To avoid cyclical dependencies, import inside the function instead of
