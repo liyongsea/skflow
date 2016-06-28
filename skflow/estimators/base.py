@@ -434,7 +434,7 @@ class TensorFlowEstimator(BaseEstimator):
                 self._model_loss, self._global_step, trainer_op)
 
             # Restore summaries.
-            self._summaries = self._graph.get_operation_by_name('MergeSummary/MergeSummary')
+            self._summaries = self._graph.get_operation_by_name('MergeSummary/MergeSummary').outputs[0]
 
             # Restore session.
             if not isinstance(self.config_addon, ConfigAddon):
