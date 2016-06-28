@@ -145,7 +145,7 @@ class TensorFlowTrainer(object):
             feed_dict = feed_dict_fn()
             if summaries:
                 global_step, loss, summ, _ = sess.run(
-                    [self.global_step, self.loss, summaries.outputs, self.trainer],
+                    [self.global_step, self.loss, summaries.outputs[0], self.trainer],
                     feed_dict=feed_dict)
             else:
                 global_step, loss, _ = sess.run(
