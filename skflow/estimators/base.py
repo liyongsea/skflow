@@ -135,11 +135,11 @@ class TensorFlowEstimator(BaseEstimator):
                 self._class_weight_node = tf.constant(
                     self.class_weight, name='class_weight')
 
-            # Add histograms for X and y if they are floats.
-            if self._data_feeder.input_dtype in (np.float32, np.float64):
-                tf.histogram_summary("X", self._inp)
-            if self._data_feeder.output_dtype in (np.float32, np.float64):
-                tf.histogram_summary("y", self._out)
+            # Add histograms for X and y if they are floats.  # We don't want to do that
+            # if self._data_feeder.input_dtype in (np.float32, np.float64):
+            #     tf.histogram_summary("X", self._inp)
+            # if self._data_feeder.output_dtype in (np.float32, np.float64):
+            #     tf.histogram_summary("y", self._out)
 
             # Create model's graph.
             self._model_predictions, self._model_loss = self.model_fn(
